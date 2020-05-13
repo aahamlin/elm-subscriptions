@@ -1,7 +1,8 @@
 port module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, h1, h2, p, text)
+import Html exposing (Html, br, button, div, h1, h2, label, p, text)
+import Html.Attributes exposing (for, id)
 import Html.Events exposing (onClick)
 
 
@@ -41,8 +42,11 @@ view model =
         [ h1 [] [ text "Subscriptions" ]
         , p [] [ text model.msg ]
         , h2 [] [ text (String.fromInt model.val) ]
-        , button [ onClick IncrementMsg ] [ text "Inc" ]
-        , button [ onClick SendMsg ] [ text "Send" ]
+        , label [ for "inc-btn" ] [ text "Increase from UI" ]
+        , button [ id "inc-btn", onClick IncrementMsg ] [ text "Increment" ]
+        , br [] []
+        , label [ for "dec-btn" ] [ text "Decrease from JavaScript" ]
+        , button [ id "dec-btn", onClick SendMsg ] [ text "Decrement" ]
         ]
 
 
@@ -64,7 +68,7 @@ update msg model =
             )
 
         GotPortMsg inVal ->
-            ( { model | val = inVal, msg = "decremented from port " }
+            ( { model | val = inVal, msg = "decremented" }
             , Cmd.none
             )
 
@@ -84,14 +88,13 @@ port storeVal : Int -> Cmd msg
 port onValChange : (Int -> msg) -> Sub msg
 
 
-
--- valChanges : (Int -> msg) -> Sub msg
--- valChanges toMsg =
---     onValChange (\value -> toMsg value)
+valChanges : (Int -> msg) -> Sub msg
+valChanges toMsg =
+    onValChange (\value -> toMsg value)
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case Debug.log "subscription model" model of
         _ ->
-            onValChange GotPortMsg
+            valChanges GotPortMsg
