@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>Subscriptions</title>
+  </head>
+  
+  <body>
+    <h1>Header</h1>
+    <div id="main"></div>
+
+    <script src="elm.js"></script>
+    <script>
+      console.log("configuring elm application");
+      var app = Elm.Main.init({
+	  node: document.getElementById("main"),
+	  flags: null
+      });
+      console.log("subcribing to storeVal port");
+      app.ports.storeVal.subscribe(function (val) {
+	  console.log("[JS] storeVal received: ", val);
+
+	  setTimeout(function () {
+	      newVal = --val;
+	      console.log("[JS] onValChange sending: ", newVal);
+	      app.ports.onValChange.send(newVal);
+	  }, 0);
+      });
+      console.log("initialized JS and Elm");
+    </script>
+  </body>
+  
+</html>
