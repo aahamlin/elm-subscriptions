@@ -23,6 +23,7 @@ type alias Model =
 
 type Msg
     = GotPortMsg Int
+    | Recv Int
     | SendMsg
     | IncrementMsg
 
@@ -40,6 +41,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ h1 [] [ text "Subscriptions" ]
+        , h2 [] [ text "Every 3 seconds, Recv str will be called from JS" ]
         , p [] [ text model.msg ]
         , h2 [] [ text (String.fromInt model.val) ]
         , label [ for "inc-btn" ] [ text "Increase from UI" ]
@@ -52,12 +54,12 @@ view model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        newVal =
-            model.val + 1
-    in
     case Debug.log "update msg" msg of
         IncrementMsg ->
+            let
+                newVal =
+                    model.val + 1
+            in
             ( { model | val = newVal, msg = "incremented" }
             , Cmd.none
             )
@@ -72,13 +74,14 @@ update msg model =
             , Cmd.none
             )
 
+        Recv n ->
+            ( { model | msg = String.fromInt n }
+            , Cmd.none
+            )
+
 
 sendUpdateVal : Int -> Cmd msg
 sendUpdateVal i =
-    let
-        log =
-            Debug.log "sendupdateval" i
-    in
     storeVal i
 
 
@@ -88,13 +91,23 @@ port storeVal : Int -> Cmd msg
 port onValChange : (Int -> msg) -> Sub msg
 
 
+port onMsgChange : (Int -> msg) -> Sub msg
+
+
 valChanges : (Int -> msg) -> Sub msg
 valChanges toMsg =
     onValChange (\value -> toMsg value)
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    case Debug.log "subscription model" model of
-        _ ->
-            valChanges GotPortMsg
+subscriptions _ =
+    Sub.batch
+        [ valChanges GotPortMsg
+        , onMsgChange Recv
+        ]
+
+
+
+-- case Debug.log "subscription model" model of
+--     _ ->
+--         valChanges GotPortMsg

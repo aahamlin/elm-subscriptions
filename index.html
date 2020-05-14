@@ -24,6 +24,12 @@
 	      app.ports.onValChange.send(newVal);
 	  }, 0);
       });
+
+      var num = 0;
+      setInterval(function () {
+	  app.ports.onMsgChange.send(++num);
+      }, 3000);
+      
       console.log("initialized JS and Elm");
     </script>
   </body>
