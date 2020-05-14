@@ -1,8 +1,8 @@
 port module Main exposing (main)
 
 import Browser
-import Html exposing (Html, br, button, div, h1, h2, label, p, text)
-import Html.Attributes exposing (for, id)
+import Html exposing (Html, a, br, button, div, h1, h2, label, p, text)
+import Html.Attributes exposing (for, href, id)
 import Html.Events exposing (onClick)
 
 
@@ -15,9 +15,20 @@ main =
         }
 
 
-type alias Model =
+type Model
+    = Count CountModel
+    | Timer RecvModel
+
+
+type alias CountModel =
     { msg : String
     , val : Int
+    }
+
+
+type alias RecvModel =
+    { val : Int
+    , count : CountModel
     }
 
 
@@ -26,58 +37,79 @@ type Msg
     | Recv Int
     | SendMsg
     | IncrementMsg
+    | SwitchView
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { msg = "Initial msg"
-      , val = 0
-      }
+    ( Count
+        { msg = "Initial msg"
+        , val = 0
+        }
     , Cmd.none
     )
 
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h1 [] [ text "Subscriptions" ]
-        , h2 [] [ text "Every 3 seconds, Recv str will be called from JS" ]
-        , p [] [ text model.msg ]
-        , h2 [] [ text (String.fromInt model.val) ]
-        , label [ for "inc-btn" ] [ text "Increase from UI" ]
-        , button [ id "inc-btn", onClick IncrementMsg ] [ text "Increment" ]
-        , br [] []
-        , label [ for "dec-btn" ] [ text "Decrease from JavaScript" ]
-        , button [ id "dec-btn", onClick SendMsg ] [ text "Decrement" ]
-        ]
+    case model of
+        Count m ->
+            div []
+                [ h1 [] [ text "Subscriptions" ]
+                , h2 [] [ text (String.fromInt m.val) ]
+                , label [ for "inc-btn" ] [ text "Increase from UI" ]
+                , button [ id "inc-btn", onClick IncrementMsg ] [ text "Increment" ]
+                , br [] []
+                , label [ for "dec-btn" ] [ text "Decrease from JavaScript" ]
+                , button [ id "dec-btn", onClick SendMsg ] [ text "Decrement" ]
+                , p [] [ text m.msg ]
+                , a [ href "#", onClick SwitchView ] [ text "Switch view" ]
+                ]
+
+        Timer m ->
+            div []
+                [ h1 [] [ text "Javascript timer" ]
+                , p [] [ text "Every 3 seconds, Recv str will be called from JS" ]
+                , h2 [] [ text (String.fromInt m.val) ]
+                , a [ href "#", onClick SwitchView ] [ text "Switch view" ]
+                ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "update msg" msg of
-        IncrementMsg ->
-            let
-                newVal =
-                    model.val + 1
-            in
-            ( { model | val = newVal, msg = "incremented" }
+    case Debug.log "update msg" ( msg, model ) of
+        ( IncrementMsg, Count m ) ->
+            ( Count { m | val = m.val + 1, msg = "incremented" }
             , Cmd.none
             )
 
-        SendMsg ->
-            ( model
-            , sendUpdateVal model.val
+        ( SendMsg, Count m ) ->
+            ( Count m
+            , sendUpdateVal m.val
             )
 
-        GotPortMsg inVal ->
-            ( { model | val = inVal, msg = "decremented" }
+        ( GotPortMsg inVal, Count m ) ->
+            ( Count { m | val = inVal, msg = "decremented" }
             , Cmd.none
             )
 
-        Recv n ->
-            ( { model | msg = String.fromInt n }
+        ( Recv n, Timer m ) ->
+            ( Timer { m | val = n }
             , Cmd.none
             )
+
+        ( SwitchView, Timer m ) ->
+            ( Count m.count
+            , Cmd.none
+            )
+
+        ( SwitchView, Count m ) ->
+            ( Timer { val = 0, count = m }
+            , Cmd.none
+            )
+
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
 sendUpdateVal : Int -> Cmd msg
@@ -100,14 +132,14 @@ valChanges toMsg =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ valChanges GotPortMsg
-        , onMsgChange Recv
-        ]
+subscriptions model =
+    -- Sub.batch
+    --     [ valChanges GotPortMsg
+    --     , onMsgChange Recv
+    --     ]
+    case Debug.log "subscription model" model of
+        Count _ ->
+            valChanges GotPortMsg
 
-
-
--- case Debug.log "subscription model" model of
---     _ ->
---         valChanges GotPortMsg
+        Timer _ ->
+            onMsgChange Recv
